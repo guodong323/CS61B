@@ -7,6 +7,8 @@ import java.util.Observable;
 /** The state of a game of 2048.
  *  @author TODO: YOUR NAME HERE
  */
+
+// note: with a 75% chance of choosing 2 and a 25% chance of choosing 4
 public class Model extends Observable {
     /** Current contents of the board. */
     private Board board;
@@ -94,7 +96,7 @@ public class Model extends Observable {
         setChanged();
     }
 
-    /** Tilt the board toward SIDE. Return true iff this changes the board.
+    /** Tilt the board toward SIDE. Return true if this changes the board.
      *
      * 1. If two Tile objects are adjacent in the direction of motion and have
      *    the same value, they are merged into one Tile of twice the original
@@ -113,6 +115,107 @@ public class Model extends Observable {
         // TODO: Modify this.board (and perhaps this.score) to account
         // for the tilt to the Side SIDE. If the board changed, set the
         // changed local variable to true.
+
+        board.setViewingPerspective(side);
+        int size = board.size();
+//        // 左下角开始
+//        for (int i = 0;i < size; i++) {
+//            // 记录该行还有多少个空格子
+//            int count = 0;
+//            for (int j = size-1;j >= 0; j--) {
+//                Tile t = board.tile(i,j);
+//                if (t == null) {
+//                    count++;
+//                    continue;
+//                }
+//                if (board.tile(i,j+count) == null) {
+//                    board.move(i,j+count,t);
+//                    changed = true;
+//                }
+//            }
+//        }
+//
+//        for (int i = 0;i < size; i++) {
+//            for (int j = size-1;j > 0; j--) {
+//                Tile t = board.tile(i,j);
+//                Tile upt = board.tile(i,j-1);
+//                if (t != null && upt != null && t.value() == upt.value()) {
+//                    board.move(i,j,upt);
+//                    score += upt.value()+t.value();
+//                    changed = true;
+//                }
+//            }
+//        }
+//
+//        for (int i = 0;i < size; i++) {
+//            // 记录该行还有多少个空格子
+//            int count = 0;
+//            for (int j = size-1;j >= 0; j--) {
+//                Tile t = board.tile(i,j);
+//                if (t == null) {
+//                    count++;
+//                    continue;
+//                }
+//                if (board.tile(i,j+count) == null) {
+//                    board.move(i,j+count,t);
+//                    changed = true;
+//                }
+//            }
+//        }
+//
+//        if (side != Side.NORTH) {
+//            board.setViewingPerspective(Side.NORTH);
+//        }
+
+
+        board.setViewingPerspective(side);
+
+        for (int i = 0;i < size; i++) {
+            int count = 0;
+            for (int j = size-1;j >= 0; j--) {
+                Tile t = board.tile(i,j);
+                if (t == null) {
+                    count++;
+                    continue;
+                }
+                Tile newt = board.tile(i,j+count);
+                if (newt == null) {
+                    board.move(i,j+count,t);
+                    changed = true;
+                }
+            }
+        }
+
+        for (int i = 0;i < size; i++) {
+            for (int j = size-1;j > 0; j--) {
+                Tile t = board.tile(i,j);
+                Tile newt = board.tile(i,j-1);
+                if (t != null && newt != null && t.value() == newt.value()) {
+                    board.move(i,j,newt);
+                    score += t.value() * 2;
+                    changed = true;
+                }
+            }
+        }
+
+        for (int i = 0;i < size; i++) {
+            int count = 0;
+            for (int j = size-1; j>= 0; j--) {
+                Tile t = board.tile(i,j);
+                if (t == null) {
+                    count++;
+                    continue;
+                }
+                if (board.tile(i,j+count) == null) {
+                    board.move(i,j+count,t);
+                    changed = true;
+                }
+            }
+        }
+
+        if (side != Side.NORTH) {
+            board.setViewingPerspective(Side.NORTH);
+        }
 
         checkGameOver();
         if (changed) {
@@ -138,6 +241,15 @@ public class Model extends Observable {
      * */
     public static boolean emptySpaceExists(Board b) {
         // TODO: Fill in this function.
+        int size = b.size();
+        for (int i = 0;i < size; i++) {
+            for (int j = 0;j < size; j++) {
+                Tile t = b.tile(i,j);
+                if (t == null) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 
@@ -148,6 +260,17 @@ public class Model extends Observable {
      */
     public static boolean maxTileExists(Board b) {
         // TODO: Fill in this function.
+        int size = b.size();
+        for (int i = 0;i < size; i++) {
+            for (int j = 0;j < size; j++) {
+                Tile t = b.tile(i,j);
+                if (t != null) {
+                    if (t.value() == MAX_PIECE) {
+                        return true;
+                    }
+                }
+            }
+        }
         return false;
     }
 
@@ -157,8 +280,36 @@ public class Model extends Observable {
      * 1. There is at least one empty space on the board.
      * 2. There are two adjacent tiles with the same value.
      */
+
+    /**
+     * DFS遍历一遍，如果说有在此瓦片四周有相同的value，则可以继续游戏
+     * @param b
+     * @return
+     */
     public static boolean atLeastOneMoveExists(Board b) {
         // TODO: Fill in this function.
+        if (emptySpaceExists(b)) {
+            return true;
+        }
+        int[] dx = {0,1,0,-1};
+        int[] dy = {1,0,-1,0};
+        int size = b.size();
+        for (int i = 0;i < size; i++) {
+            for (int j = 0;j < size; j++) {
+                Tile curt = b.tile(i,j);
+                int cur = curt.value();
+                for (int t = 0;t < 4; t++) {
+                    int newi = i+dx[t];
+                    int newj = j+dy[t];
+                    if (newi > 0 && newi < size && newj > 0 && newj < size) {
+                        Tile newt = b.tile(newi,newj);
+                        if (newt.value() == cur) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
         return false;
     }
 
